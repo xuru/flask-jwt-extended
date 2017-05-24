@@ -3,6 +3,8 @@ import datetime
 import json
 from functools import wraps
 
+import six
+
 from flask_jwt_extended.config import config
 from flask_jwt_extended.exceptions import RevokedTokenError
 
@@ -25,6 +27,17 @@ def _verify_blacklist_enabled(fn):
 
 def _ts_to_utc_datetime(ts):
     return datetime.datetime.utcfromtimestamp(ts)
+
+
+def as_str(stored_str):
+    """
+    Checks compatiblity with python 3.4+ strings
+    :param stored_str: str or bytes to decode
+    :return: the utf-8 string
+    """
+    if type(stored_str) is six.binary_type:
+        stored_str = stored_str.decode('utf-8')
+    return stored_str
 
 
 def _store_supports_ttl(store):
@@ -53,8 +66,7 @@ def _get_token_ttl(token):
 
 def _get_token_from_store(jti):
     store = config.blacklist_store
-    stored_str = store.get(jti).decode('utf-8')
-    stored_data = json.loads(stored_str)
+    stored_data = json.loads(as_str(store.get(jti)))
     return stored_data
 
 
@@ -99,7 +111,7 @@ def get_stored_tokens(identity):
     """
     # TODO this is *super* inefficient. Come up with a better way
     store = config.blacklist_store
-    data = [json.loads(store.get(jti).decode('utf-8')) for jti in store.iter_keys()]
+    data = [json.loads(as_str(store.get(jti))) for jti in store.iter_keys()]
     return [d for d in data if d['token']['identity'] == identity]
 
 
@@ -111,7 +123,7 @@ def get_all_stored_tokens():
     TODO
     """
     store = config.blacklist_store
-    return [json.loads(store.get(jti).decode('utf-8')) for jti in store.iter_keys()]
+    return [json.loads(as_str(store.get(jti))) for jti in store.iter_keys()]
 
 
 @_verify_blacklist_enabled
@@ -126,13 +138,13 @@ def check_if_token_revoked(token):
 
     # Only check access tokens if BLACKLIST_TOKEN_CHECKS is set to 'all`
     if token_type == 'access' and check_type == 'all':
-        stored_data = json.loads(store.get(jti).decode('utf-8'))
+        stored_data = json.loads(as_str(store.get(jti)))
         if stored_data['revoked']:
             raise RevokedTokenError('Token has been revoked')
 
     # Always check refresh tokens
     if token_type == 'refresh':
-        stored_data = json.loads(store.get(jti).decode('utf-8'))
+        stored_data = json.loads(as_str(store.get(jti)))
         if stored_data['revoked']:
             raise RevokedTokenError('Token has been revoked')
 
