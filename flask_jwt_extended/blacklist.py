@@ -138,14 +138,20 @@ def check_if_token_revoked(token):
 
     # Only check access tokens if BLACKLIST_TOKEN_CHECKS is set to 'all`
     if token_type == 'access' and check_type == 'all':
-        stored_data = json.loads(as_str(store.get(jti)))
-        if stored_data['revoked']:
+        try:
+            stored_data = json.loads(as_str(store.get(jti)))
+            if stored_data['revoked']:
+                raise RevokedTokenError('Token has been revoked')
+        except:
             raise RevokedTokenError('Token has been revoked')
 
     # Always check refresh tokens
     if token_type == 'refresh':
-        stored_data = json.loads(as_str(store.get(jti)))
-        if stored_data['revoked']:
+        try:
+            stored_data = json.loads(as_str(store.get(jti)))
+            if stored_data['revoked']:
+                raise RevokedTokenError('Token has been revoked')
+        except:
             raise RevokedTokenError('Token has been revoked')
 
 
